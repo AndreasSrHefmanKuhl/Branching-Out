@@ -1,96 +1,78 @@
 import json
+from typing import List, Dict, Any, Optional
 
-def filter_users_by_name(name):
+USER_DATA_FILE = "users.json"
+
+
+def load_users(filepath: str = USER_DATA_FILE) -> Optional[List[Dict[str, Any]]]:
     """
-    Filters users based on an exact, case-insensitive match of their 'name'.
+    Loads and returns user data from the specified JSON file.
+
+    Returns:
+        List of user dictionaries if successful, None otherwise.
     """
     try:
-        with open("users.json", "r") as file:
-            users = json.load(file)
+        with open(filepath, "r", encoding="utf-8") as file:
+            return json.load(file)
     except FileNotFoundError:
-        print("Error: 'users.json' file not found.")
-        return
+        print(f"Error: '{filepath}' file not found.")
     except json.JSONDecodeError:
-        print("Error: Could not decode JSON from 'users.json'. Check file format.")
-        return
+        print(f"Error: Could not decode JSON from '{filepath}'. Check file format.")
+    return None
 
-    filtered_users = [user for user in users if user.get("name", "").lower() == name.lower()]
 
-    if filtered_users:
-        print("\n--- Users matching name: {} ---".format(name))
-        for user in filtered_users:
+def filter_users(users: List[Dict[str, Any]], key: str, value: Any) -> List[Dict[str, Any]]:
+    """
+    Filters a list of user dictionaries by key and value.
+
+    - Strings are compared case-insensitively.
+    - Non-string types use exact equality.
+    """
+    if isinstance(value, str):
+        target = value.lower()
+        return [
+            user for user in users
+            if str(user.get(key, "")).lower() == target
+        ]
+    return [user for user in users if user.get(key) == value]
+
+
+def display_results(results: List[Dict[str, Any]], key: str, value: Any) -> None:
+    """Prints filtered user results to standard output."""
+    if results:
+        print(f"\n--- Users matching {key}: {value} ---")
+        for user in results:
             print(user)
     else:
-        print("\nNo users found with the name: {}".format(name))
+        print(f"\nNo users found with {key}: {value}")
 
-def filter_users_by_age(age):
-    """
-    Filters users based on an exact match of their 'age'.
-    """
-    try:
-        age_int = int(age) # Ensure the input can be treated as an integer
-    except ValueError:
-        print("Error: Age must be a valid number.")
+
+def main() -> None:
+    """Main execution loop for user filtering CLI."""
+    users = load_users()
+    if users is None:
         return
 
-    try:
-        with open("users.json", "r") as file:
-            users = json.load(file)
-    except FileNotFoundError:
-        print("Error: 'users.json' file not found.")
-        return
-    except json.JSONDecodeError:
-        print("Error: Could not decode JSON from 'users.json'. Check file format.")
-        return
+    print("Welcome to the User Filter.")
+    filter_option = input("What would you like to filter by? ('name', 'age', or 'email'): ").strip().lower()
 
-    # Check that user["age"] exists and is an integer before comparison
-    filtered_users = [user for user in users if user.get("age") == age_int]
+    if filter_option in ("name", "email"):
+        search_val = input(f"Enter a {filter_option} to filter users: ").strip()
+        filtered = filter_users(users, filter_option, search_val)
+        display_results(filtered, filter_option, search_val)
 
-    if filtered_users:
-        print("\n--- Users matching age: {} ---".format(age_int))
-        for user in filtered_users:
-            print(user)
+    elif filter_option == "age":
+        raw_age = input("Enter an age to filter users: ").strip()
+        try:
+            age_int = int(raw_age)
+            filtered = filter_users(users, "age", age_int)
+            display_results(filtered, "age", age_int)
+        except ValueError:
+            print("Error: Age must be a valid integer.")
+
     else:
-        print("\nNo users found with the age: {}".format(age_int))
-
-def filter_users_by_email(email):
-    """
-    Filters users based on an exact, case-insensitive match of their 'email'.
-    """
-    try:
-        with open("users.json", "r") as file:
-            users = json.load(file)
-    except FileNotFoundError:
-        print("Error: 'users.json' file not found.")
-        return
-    except json.JSONDecodeError:
-        print("Error: Could not decode JSON from 'users.json'. Check file format.")
-        return
-
-    # Filter by exact, case-insensitive email match
-    filtered_users = [user for user in users if user.get("email", "").lower() == email.lower()]
-
-    if filtered_users:
-        print("\n--- Users matching email: {} ---".format(email))
-        for user in filtered_users:
-            print(user)
-    else:
-        print("\nNo users found with the email: {}".format(email))
+        print(f"Filtering by '{filter_option}' is not supported. Please choose 'name', 'age', or 'email'.")
 
 
 if __name__ == "__main__":
-    print("Welcome to the User Filter.")
-    # Update the prompt to include 'email'
-    filter_option = input("What would you like to filter by? ('name', 'age', or 'email'): ").strip().lower()
-
-    if filter_option == "name":
-        name_to_search = input("Enter a name to filter users: ").strip()
-        filter_users_by_name(name_to_search)
-    elif filter_option == "age":
-        age_to_search = input("Enter an age to filter users: ").strip()
-        filter_users_by_age(age_to_search)
-    elif filter_option == "email": # Handle the new option
-        email_to_search = input("Enter an email to filter users: ").strip()
-        filter_users_by_email(email_to_search) # Call the new function
-    else:
-        print("Filtering by '{}' is not a supported option. Please choose 'name', 'age', or 'email'.".format(filter_option))
+    main()
